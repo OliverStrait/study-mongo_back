@@ -1,6 +1,10 @@
 
 ### fail because  illegal RegEx charachters
+
 GET http://localhost:5657/api/yritys/?Kaupunki=Tur|Hel&page=1 HTTP/1.1
+
+### Fail not int
+GET http://localhost:5657/api/yritys/?Kaupunki=Turl&page=abc HTTP/1.1
 
 ### Fail because empty query
 GET http://localhost:5657/api/yritys/? HTTP/1.1
