@@ -4,7 +4,7 @@ const { MongoClient } = require("mongodb");
 const valid = require("./validation")
 const MQ = require("./yritys_mongo_query")
 const mongo_uri = "mongodb://localhost:27017";
-
+const error = require("./error")
 // async function MongoDbCollection(uri, database, collection) {
 //     console.log("ur", typeof uri)
 //     const client = new MongoClient(uri)
@@ -60,8 +60,11 @@ app.listen(PORT, () => { console.log(`✅ @ :${PORT}/ Node server started `) })
 
 app.use((err, req, res, next) => {
 
-    if ("reason" in err) {
-        res.status(err.status).json({ reason: err.reason, error: true, data: err?.data ? err.data : null })
+    if (err instanceof error.HttpErrInfo) {
+        res.set("Content-Type", "application/problem+json")
+        let error_data = { title: err.title, detail: err.message }
+        Object.assign(error_data, err.data)
+        res.status(err.status).json(error_data)
         res.end()
     }
     else next(err)

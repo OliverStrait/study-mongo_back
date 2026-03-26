@@ -1,8 +1,6 @@
 const obj_tool = require("./obj_tools")
+const err = require("./error")
 
-class SaniError extends Error {
-    name = "SaniError"
-}
 
 /** Separate valid and unvalid values from object using Schema-object as template
  * 
@@ -14,7 +12,7 @@ function ObjectSchemaCleaner(schema) {
 
     return (obj) => {
         var valid_obj = {}
-        var unvalid_values = {}
+        var invalid_values = []
         var valid = false
         for (let [entr, data] of Object.entries(obj))
 
@@ -22,9 +20,9 @@ function ObjectSchemaCleaner(schema) {
                 valid = true
                 valid_obj[entr] = data
             }
-            else { unvalid_values[entr] = data }
+            else { invalid_values.push({ name: entr, reason: "not supported" }) }
 
-        return [valid, valid_obj, unvalid_values]
+        return [valid, valid_obj, invalid_values]
     }
 }
 
@@ -35,16 +33,17 @@ function ObjectSchemaCleaner(schema) {
  * @returns function
  */
 function QuerySchema(schema, name, allowEmpty = false) {
-    const StructureCleaner = ObjectSchemaCleaner(schema)
+    const queryCleaner = ObjectSchemaCleaner(schema)
+    const ErrorType = err.InvalidSchema
 
     return (req, res, next) => {
-        var [valid, validQuery, unvalid] = StructureCleaner(req.query)
+        var [valid, validQuery, invalid] = queryCleaner(req.query)
 
         if (!valid && !allowEmpty) {
-            return next({ reason: `Unsupported query schema`, data: { unvalid: unvalid, valid: validQuery }, status: 400 })
+            let msg = (!valid && invalid.length == 0) ? "Empty query" : `All parameters are invalid`
+            throw new ErrorType(msg).add_data({ "invalid-params": invalid })
         }
-        if (unvalid.length > 0)
-            console.log("Query schema:", name, "Got unexpected parameters: ", unvalid)
+
         req.valid_query = validQuery
         return next()
     }
@@ -59,6 +58,7 @@ function QuerySchema(schema, name, allowEmpty = false) {
  */
 function ObjectValueSaniation(schema_pattern, name) {
     const schema = Object.assign({}, schema_pattern)
+    const ErrorType = err.InvalidValues
 
     if ("_ALL_" in schema) {
         const FOR_ALL = schema["_ALL_"]
@@ -68,16 +68,31 @@ function ObjectValueSaniation(schema_pattern, name) {
             schema[entr] = [].concat(FOR_ALL, value)
         }
     }
+
     return (obj) => {
         var req = {}
-        for (let [entr, dat] of Object.entries(obj)) {
-            for (let [func, errFunc] of schema[entr]) {
-                let [valid, valid_res, err_name] = func(dat)
+        var invalid_details = []
+        for (let [parameter, value] of Object.entries(obj)) {
+
+            for (let [func, errFunc] of schema[parameter]) {
+                let [valid, sanitazed, err_reason] = func(value)
                 if (!valid) {
-                    let valid = errFunc(valid_res, err_name)
-                    if (!valid) throw new SaniError(`Invalid input: ${entr}=${dat} Failed: ${err_name}`)
+                    invalid_details.push({ name: parameter, reason: err_reason })
+                    try {
+                        let valid = errFunc(sanitazed, invalid_details, ErrorType)
+                        if (!valid) {
+                            let error = new ErrorType("Could not process input")
+                            throw error
+                        }
+                    }
+                    catch (e) {
+                        if (e instanceof err.HttpErrInfo) {
+                            e.add_invalid_params(invalid_details)
+                        }
+                        throw e
+                    }
                 }
-                req[entr] = valid_res
+                req[parameter] = sanitazed
             }
         }
         return req
@@ -100,11 +115,7 @@ function validQueryValues(schema, name) {
             next()
         }
         catch (e) {
-            console.log(e.name)
-            if (e instanceof SaniError) {
-                next({ reason: name + ": " + e.message, status: 400, data: req.query })
-            }
-            else throw e
+            next(e)
         }
     }
 }

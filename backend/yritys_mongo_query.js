@@ -1,6 +1,6 @@
 const valid = require("./validation/string")
 const obj_tool = require("./obj_tools")
-
+const err = require("./error")
 
 function inAnyString(data) {
     return new RegExp(`.*${data}.*`, "i")
@@ -27,7 +27,7 @@ class Yritys_Schema_model {
  * @param {*} a 
  * @returns 
  */
-const IGNORE_SAN = (valid_ver, name) => { console.log("Failed value for :" + name); return false }
+const IGNORE_SAN = (valid_ver, invalid_data, ErrorType) => { throw new ErrorType("Could not process input") }
 
 const Yritys_value_sanitation = {
     _ALL_: [[valid.sanitizeReqEx, IGNORE_SAN]],

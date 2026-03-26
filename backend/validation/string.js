@@ -15,7 +15,7 @@ function sanitizeReqEx(value) {
     if (new_value.length == value.length)
         return [true, new_value]
     else
-        return [false, new_value, "Has REG_EX charachters"]
+        return [false, new_value, "Has REG_EX characters"]
 }
 
 function isInt(value) {
