@@ -1,14 +1,13 @@
 const obj_tool = require("./obj_tools")
 const err = require("./error")
 
-
-/** Separate valid and unvalid values from object using Schema-object as template
- * 
+/** Separate valid and invalid schema patterns from object using Schema-object as a template. 
+ * zero-length data is considered invalid
  * @param {Object} obj 
  * @param {Object} schema 
  * @returns [valid:bool, valid_obj, list[{p:name, v:data}]]
  */
-function ObjectSchemaCleaner(schema) {
+function SchemaCleaner(schema) {
 
     return (obj) => {
         var valid_obj = {}
@@ -17,8 +16,11 @@ function ObjectSchemaCleaner(schema) {
         for (let [entr, data] of Object.entries(obj))
 
             if (entr in schema) {
-                valid = true
-                valid_obj[entr] = data
+                if (data.length != 0) {
+                    valid = true
+                    valid_obj[entr] = data
+                }
+                else continue
             }
             else { invalid_values.push({ name: entr, reason: "not supported" }) }
 
@@ -33,11 +35,11 @@ function ObjectSchemaCleaner(schema) {
  * @returns function
  */
 function QuerySchema(schema, name, allowEmpty = false) {
-    const queryCleaner = ObjectSchemaCleaner(schema)
+    const QuerySchemaCleaner = SchemaCleaner(schema)
     const ErrorType = err.InvalidSchema
 
     return (req, res, next) => {
-        var [valid, validQuery, invalid] = queryCleaner(req.query)
+        var [valid, validQuery, invalid] = QuerySchemaCleaner(req.query)
 
         if (!valid && !allowEmpty) {
             let msg = (!valid && invalid.length == 0) ? "Empty query" : `All parameters are invalid`
@@ -45,6 +47,7 @@ function QuerySchema(schema, name, allowEmpty = false) {
         }
 
         req.valid_query = validQuery
+        console.log(req.valid_query)
         return next()
     }
 }
@@ -56,7 +59,7 @@ function QuerySchema(schema, name, allowEmpty = false) {
  * @param {string} name 
  * @returns 
  */
-function ObjectValueSaniation(schema_pattern, name) {
+function ValueSaniation(schema_pattern, name) {
     const schema = Object.assign({}, schema_pattern)
     const ErrorType = err.InvalidValues
 
@@ -106,8 +109,8 @@ function ObjectValueSaniation(schema_pattern, name) {
  * @param {String} name 
  * @returns `function(req,res,next)`
  */
-function validQueryValues(schema, name) {
-    const sanitizer = ObjectValueSaniation(schema, name)
+function QueryValues(schema, name) {
+    const sanitizer = ValueSaniation(schema, name)
 
     return (req, res, next) => {
         try {
@@ -119,4 +122,4 @@ function validQueryValues(schema, name) {
         }
     }
 }
-module.exports = { QuerySchema, validQueryValues }
+module.exports = { QuerySchema, QueryValues }

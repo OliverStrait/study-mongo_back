@@ -1,16 +1,24 @@
 
 ### fail because  illegal RegEx charachters
-
+### 422 Unprocessable
 GET http://localhost:5657/api/yritys/?Kaupunki=Tur|Hel&page=1 HTTP/1.1
 
 ### Fail not int
+### 422 Unprocessable
 GET http://localhost:5657/api/yritys/?Kaupunki=Turl&page=abc HTTP/1.1
 
 ### Fail because empty query
+### 400 
 GET http://localhost:5657/api/yritys/? HTTP/1.1
 
-### Unvalid schema
+### Invalid schema
+### 400 Bad Request
 GET http://localhost:5657/api/yritys/?asd=2323&bcm=Elos HTTP/1.1
 
-### Partially valid schema. Should return results
-GET http://localhost:5657/api/yritys/?asd=2323&bcm=Elos&Kaupunki=Helsinki HTTP/1.1
+### Partially valid schema.
+### 200 OK
+GET http://localhost:5657/api/yritys/?asd=2323&bcm=Elos&Kaupunki=Helsinki&page=1 HTTP/1.1
+
+#### Empty but valid parameters and 
+### 200 OK, result
+GET http://localhost:5173/api/yritys?Kaupunki=HEL&Osoite=&Yhtiomuoto=&Y_tunnus=&Nimi=&Toimiala=&Toimialakoodi=&Rekisterointi_pvm=&Website=false HTTP/1.1

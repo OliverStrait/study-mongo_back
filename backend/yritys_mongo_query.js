@@ -65,7 +65,7 @@ function ProcessSchema(obj, schema) {
 
 const PAGE_LENGTH = 20
 function YRITYS_query(params) {
-    let page = params?.page
+    let page = Number(params?.page)
     var req = ProcessSchema(params, YRITYS_SCHEMA)
 
     var skip = 0
