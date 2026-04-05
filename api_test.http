@@ -1,7 +1,7 @@
 
 ### fail because  illegal RegEx charachters
 ### 422 Unprocessable
-GET http://localhost:5657/api/yritys/?Kaupunki=Tur|Hel&page=1 HTTP/1.1
+GET http://localhost:5657/api/yritys/?Kaupunki=Tur|Hel&Toimialakoodi=62&page=1 HTTP/1.1
 
 ### Fail not int
 ### 422 Unprocessable
@@ -21,4 +21,4 @@ GET http://localhost:5657/api/yritys/?asd=2323&bcm=Elos&Kaupunki=Helsinki&page=1
 
 #### Empty but valid parameters and 
 ### 200 OK, result
-GET http://localhost:5173/api/yritys?Kaupunki=HEL&Osoite=&Yhtiomuoto=&Y_tunnus=&Nimi=&Toimiala=&Toimialakoodi=&Rekisterointi_pvm=&Website=false HTTP/1.1
+GET http://localhost:5173/api/yritys?Kaupunki=HEL&Osoite=&Yhtiomuoto=&Y_tunnus=&Nimi=&Toimiala=&Toimialakoodi=&Rekisterointi_pvm=&Website=false&page=3 HTTP/1.1

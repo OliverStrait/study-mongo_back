@@ -50,7 +50,7 @@ const YRITYS_SCHEMA = new Yritys_Schema_model()
  * @param {*} schema 
  * @returns 
  */
-function ProcessSchema(obj, schema) {
+function TransformValues(obj, schema) {
     var req = {}
     for (let [entr, dat] of Object.entries(obj)) {
         if (dat != " " && dat != null && dat != "") {
@@ -63,16 +63,69 @@ function ProcessSchema(obj, schema) {
 }
 
 
-const PAGE_LENGTH = 20
-function YRITYS_query(params) {
-    let page = Number(params?.page)
-    var req = ProcessSchema(params, YRITYS_SCHEMA)
 
-    var skip = 0
-    if (page && Number.isInteger(page)) {
-        skip = page * PAGE_LENGTH
+class Cache {
+    constructor(time) {
+        this.cache = {}
+        this.max_time = time
     }
-    return [req, skip, PAGE_LENGTH]
+
+    gen_key(...args) {
+        return JSON.stringify(args)
+    }
+    push(key, value) {
+        this.cache[key] = value
+        setTimeout(() => { delete this.cache[key]; console.log("deleted cached key", key) }, this.max_time)
+    }
+    async get(name, func) {
+        let key = this.gen_key(name)
+        let res = this.cache[key]
+        if (res) { return [key, res] }
+        else {
+            let new_res = await func()
+            this.push(key, new_res)
+            return [key, new_res]
+        }
+    }
+}
+class YRITYS {
+    PAGE_LENGTH = 20
+    projection = { projection: { _id: false, tradeRegisterStatus: 0, status: 0, endDate: 0 } }
+    constructor() {
+        this.result_count = new Cache(1 * 60 * 60 * 1000)
+    }
+    validate_schema() {
+
+    }
+    cleanUpSchemaValues() {
+
+    }
+
+    paging(page) {
+        const len = this.PAGE_LENGTH
+        var skip = 0
+        if (page && Number.isInteger(page)) {
+            skip = page * len
+        }
+        return { page, skip, len }
+    }
+
+    async get_query(params, cursor) {
+        const paging = this.paging(Number(params?.page))
+        var req = TransformValues(params, YRITYS_SCHEMA)
+
+        var [key, total_result] = await this.result_count.get(req,
+            async () => { let res = await cursor.find(req, this.projection).toArray(); return res.length })
+        let result = await cursor.find(req, this.projection).skip(paging.skip)
+            .limit(paging.len)
+            .toArray()
+        return {
+            data: result,
+            meta: { total: total_result, pages: Math.ceil(total_result / paging.len) }
+        }
+
+    }
 }
 
-module.exports = { YRITYS_query, YRITYS_SCHEMA, Yritys_value_sanitation }
+
+module.exports = { YRITYS, YRITYS_SCHEMA, Yritys_value_sanitation }

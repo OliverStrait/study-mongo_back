@@ -13,24 +13,17 @@ const MDB = monClient.db("yritysrekisteri",)
 const MDB_yritys_coll = MDB.collection("tekniset_yritykset")
 
 
-
+const YRITYS_API = new MQ.YRITYS()
 app.get("/api/yritys",
     valid.QuerySchema(MQ.YRITYS_SCHEMA, "YRITYS_SCHEMA", false),
     valid.QueryValues(MQ.Yritys_value_sanitation, "YRITYS_VALUES"),
 
     async (req, res, next) => {
-
-        let [q, skip, page_size] = MQ.YRITYS_query(req.valid_query)
-
         try {
-            result = await MDB_yritys_coll.find(q, { projection: { _id: false, tradeRegisterStatus: 0, status: 0, endDate: 0 } })
-                .skip(skip)
-                .limit(page_size)
-                .toArray()
-
+            let result = await YRITYS_API.get_query(req.valid_query, MDB_yritys_coll)
             res.json(result)
         }
-        catch (e) { next(new Error("Database error", { cause: e })) }
+        catch (e) { next(new Error("Database connection failure", { cause: e })) }
     }
 )
 
@@ -45,5 +38,9 @@ app.use((err, req, res, next) => {
         res.status(err.status).json(error_data)
         res.end()
     }
-    else next(err)
+    else {
+        let error_data = { title: "Unexpected internal error", detail: err.message, cause: err.cause.message }
+        res.status(500).json(error_data)
+    }
+
 })
