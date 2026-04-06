@@ -13,9 +13,10 @@ const MDB = monClient.db("yritysrekisteri",)
 const MDB_yritys_coll = MDB.collection("tekniset_yritykset")
 
 
-const YRITYS_API = new MQ.YRITYS()
+const YRITYS_API = new MQ.YRITYS(MDB_yritys_coll)
+
 app.get("/api/yritys",
-    valid.QuerySchema(MQ.YRITYS_SCHEMA, "YRITYS_SCHEMA", false),
+    valid.QuerySchema(YRITYS_API.query_valueTransfer, "YRITYS_SCHEMA", false),
     valid.QueryValues(MQ.Yritys_value_sanitation, "YRITYS_VALUES"),
 
     async (req, res, next) => {
@@ -30,17 +31,18 @@ app.get("/api/yritys",
 app.listen(PORT, () => { console.log(`✅ @ :${PORT}/ Node server started `) })
 
 app.use((err, req, res, next) => {
-
+    res.set("Content-Type", "application/problem+json")
     if (err instanceof error.HttpErrInfo) {
-        res.set("Content-Type", "application/problem+json")
+
         let error_data = { title: err.title, detail: err.message }
         Object.assign(error_data, err.data)
         res.status(err.status).json(error_data)
         res.end()
     }
-    else {
+    else if (err != undefined) {
+        console.log(err)
         let error_data = { title: "Unexpected internal error", detail: err.message, cause: err.cause.message }
         res.status(500).json(error_data)
     }
-
+    else next(err)
 })

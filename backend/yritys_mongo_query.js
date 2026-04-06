@@ -22,27 +22,27 @@ class Yritys_Schema_model {
     page = (a) => { return false }
 }
 
+
 /** Ignore sanitazed versions and cause error
  * 
  * @param {*} a 
  * @returns 
  */
-const IGNORE_SAN = (valid_ver, invalid_data, ErrorType) => { throw new ErrorType("Could not process input") }
+const RAISE_ERROR = (valid_ver, invalid_data, ErrorType) => { throw new ErrorType("Could not process input") }
 
 const Yritys_value_sanitation = {
-    _ALL_: [[valid.sanitizeReqEx, IGNORE_SAN]],
+    _ALL_: [[valid.sanitizeReqEx, RAISE_ERROR]],
     Kaupunki: [],
     Osoite: [],
     Yhtiomuoto: [],
     Y_tunnus: [],
     Nimi: [],
     Toimiala: [],
-    Toimialakoodi: [[valid.isInt, IGNORE_SAN]],
+    Toimialakoodi: [[valid.isInt, RAISE_ERROR]],
     Rekisterointi_pvm: [],
     Website: [],
-    page: [[valid.isInt, IGNORE_SAN]],
+    page: [[valid.isInt, RAISE_ERROR]],
 }
-const YRITYS_SCHEMA = new Yritys_Schema_model()
 
 /** Form a new object with correct queries for mongoDb
  * 
@@ -80,7 +80,9 @@ class Cache {
     async get(name, func) {
         let key = this.gen_key(name)
         let res = this.cache[key]
-        if (res) { return [key, res] }
+        if (res) {
+            return [key, res]
+        }
         else {
             let new_res = await func()
             this.push(key, new_res)
@@ -88,11 +90,15 @@ class Cache {
         }
     }
 }
+const TIMEOUT = 1 * 60 * 60 * 1000
 class YRITYS {
     PAGE_LENGTH = 20
     projection = { projection: { _id: false, tradeRegisterStatus: 0, status: 0, endDate: 0 } }
-    constructor() {
-        this.result_count = new Cache(1 * 60 * 60 * 1000)
+    query_valueTransfer = new Yritys_Schema_model()
+
+    constructor(cursor, cache_timeout = TIMEOUT) {
+        this.cursor = cursor
+        this.total_cache = new Cache(cache_timeout)
     }
     validate_schema() {
 
@@ -110,22 +116,34 @@ class YRITYS {
         return { page, skip, len }
     }
 
-    async get_query(params, cursor) {
-        const paging = this.paging(Number(params?.page))
-        var req = TransformValues(params, YRITYS_SCHEMA)
+    aggregate_count(req) {
+        return async () => {
+            let res = await this.cursor.aggregate([{ $match: req }, { $group: { _id: null, n: { $sum: 1 } } }]).toArray()
+            return res[0].n
+        }
+    }
+    async get_total_count(name, callback) {
+        let res = await this.total_cache.get(name, callback)
+        return res
+    }
 
-        var [key, total_result] = await this.result_count.get(req,
-            async () => { let res = await cursor.find(req, this.projection).toArray(); return res.length })
-        let result = await cursor.find(req, this.projection).skip(paging.skip)
+    async get_query(params, cursor) {
+        const param_copy = obj_tool.CopyObject(params)
+        const paging = this.paging(Number(obj_tool.PopProperty(param_copy, "page")))
+
+        var req = TransformValues(params, this.query_valueTransfer)
+        var [key, total_count] = await this.get_total_count(param_copy, this.aggregate_count(req))
+
+        let result = await this.cursor.find(req, this.projection).skip(paging.skip)
             .limit(paging.len)
             .toArray()
         return {
             data: result,
-            meta: { total: total_result, pages: Math.ceil(total_result / paging.len) }
+            meta: { total: total_count, pages: Math.ceil(total_count / paging.len) }
         }
 
     }
 }
 
 
-module.exports = { YRITYS, YRITYS_SCHEMA, Yritys_value_sanitation }
+module.exports = { YRITYS, Yritys_value_sanitation }
