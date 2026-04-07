@@ -21,7 +21,7 @@ app.get("/api/yritys",
 
     async (req, res, next) => {
         try {
-            let result = await YRITYS_API.get_query(req.valid_query, MDB_yritys_coll)
+            let result = await YRITYS_API.get_query(req.valid_query)
             res.json(result)
         }
         catch (e) { next(new Error("Database connection failure", { cause: e })) }

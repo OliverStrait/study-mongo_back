@@ -21,4 +21,4 @@ GET http://localhost:5657/api/yritys/?asd=2323&bcm=Elos&Kaupunki=Helsinki HTTP/1
 
 #### Empty but valid parameters and 
 ### 200 OK, result
-GET http://localhost:5657/api/yritys?Kaupunki=HEL&Osoite=&Yhtiomuoto=&Y_tunnus=&Nimi=&Toimiala=&Toimialakoodi=&Rekisterointi_pvm=&Website=false&page=2 HTTP/1.1
+GET http://localhost:5657/api/yritys?Kaupunki=HEL&Osoite=&Yhtiomuoto=&Y_tunnus=&Nimi=&Toimiala=&Toimialakoodi=62&Rekisterointi_pvm=&Website=false&page=2 HTTP/1.1
